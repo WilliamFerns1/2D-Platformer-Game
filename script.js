@@ -33,7 +33,6 @@ class Player {
     };
     this.width = proportionalSize(40); // set the width to be of 40, scaled proportionally for screen sizes with heights below or equal to 500
     this.height = proportionalSize(40); // set the height to be of 40, scaled proportionally for screen sizes with heights below or equal to 500
-    this.sideHit = false;
   }
 
   // method to draw the player on the canvas
@@ -125,9 +124,9 @@ const player = new Player();
 
 // array to store all platforms positions
 const platformPositions = [
-  { x: 500, y: proportionalSize(600) },
+  { x: 500, y: proportionalSize(450) },
   { x: 700, y: proportionalSize(400) },
-  { x: 850, y: proportionalSize(360) },
+  { x: 850, y: proportionalSize(350) },
   { x: 1050, y: proportionalSize(150) },
   { x: 2500, y: proportionalSize(450) },
   { x: 2900, y: proportionalSize(400) },
@@ -233,26 +232,11 @@ const animate = () => {
       return;
     }
 
-    const whichSideWasHit = player.position.x + player.width > platform.position.x && player.position.x + player.width < platform.position.x + player.width / 2 ? "left" : player.position.x < platform.position.x + platform.width && player.position.x > platform.position.x + platform.width - player.width / 2 ? "right" : false
-
-    const platformSideHitDetectionRules = [
-      player.position.y + player.height >= platform.position.y && player.position.y <= platform.position.y + platform.height,
-      whichSideWasHit
-    ]
-
-    if (platformSideHitDetectionRules.every(rule => rule)) {
-      player.velocity.x = 0;
-      player.sideHit = whichSideWasHit;
-      return;
-    }
-
-    player.sideHit = false;
-
     // rules to move player down when player hits the side of a platform, or hits the bottom
     const platformDetectionRules = [
       player.position.x >= platform.position.x - player.width / 2, // player position is past or equal to platform x position - 1 / 2 of player width
       player.position.x <= platform.position.x + platform.width - player.width / 3, // player position is before or equal to platform range - 1 / 3 of the player width. This and the above condition will check is player x position is at in the same range as the platform x range roughly
-      player.position.y + player.height >= platform.position.y, // player is directly right above platform, or is below the platform
+      player.position.y + player.height > platform.position.y + platform.height, // player is directly right above platform, or is below the platform
       player.position.y <= platform.position.y + platform.height,
     ];
 
@@ -260,6 +244,22 @@ const animate = () => {
       player.position.y = platform.position.y + player.height;
       player.velocity.y = gravity;
     };
+
+    const platformSideHitDetectionRules = [
+      player.position.x + player.width + player.velocity.x >= platform.position.x && player.position.x <= platform.position.x + platform.width, // player position is before or equal to platform range - 1 / 3 of the player width. This and the above condition will check is player x position is at in the same range as the platform x range roughly
+      player.position.y + player.height > platform.position.y, // player is directly right above platform, or is below the platform
+      player.position.y < platform.position.y + platform.height,
+    ];
+    
+    // whether the player is at the start of the platform, or end
+    const sideOfPlayer = player.position.x + player.width / 2 > platform.position.x + platform.width / 2 ? "end" : "start";
+    if (platformSideHitDetectionRules.every(rule => rule)) {
+      if (sideOfPlayer === "start") {
+        player.position.x = platform.position.x - player.width;
+      } else {
+        player.position.x = platform.position.x + platform.width;
+      }
+    }
   });
 
   checkpoints.forEach((checkpoint, index, checkpoints) => {
@@ -305,33 +305,25 @@ const movePlayer = (key, xVelocity, isPressed) => {
     player.velocity.y = 0;
     return;
   }
-  if (player.sideHit === "left" && key === "ArrowLeft") {
-    keys.leftKey.pressed = isPressed;
-    player.velocity.x = 0;
-  } else if (player.sideHit === "right" && key === "ArrowRight") {
-    keys.rightKey.pressed = isPressed;
-    player.velocity.x = 0;
-  } else {
-    switch (key) {
-      case "ArrowLeft":
-        keys.leftKey.pressed = isPressed;
-        if (xVelocity === 0) {
-          player.velocity.x = xVelocity;
-        }
-        player.velocity.x -= xVelocity;
-        break;
-      case "ArrowUp":
-      case " ":
-      case "Spacebar":
-        player.velocity.y -= 8;
-        break;
-      case "ArrowRight":
-        keys.rightKey.pressed = isPressed;
-        if (xVelocity === 0) {
-          player.velocity.x = xVelocity;
-        }
-        player.velocity.x += xVelocity;
-    }
+  switch (key) {
+    case "ArrowLeft":
+      keys.leftKey.pressed = isPressed;
+      if (xVelocity === 0) {
+        player.velocity.x = xVelocity;
+      }
+      player.velocity.x -= xVelocity;
+      break;
+    case "ArrowUp":
+    case " ":
+    case "Spacebar":
+      player.velocity.y -= 8;
+      break;
+    case "ArrowRight":
+      keys.rightKey.pressed = isPressed;
+      if (xVelocity === 0) {
+        player.velocity.x = xVelocity;
+      }
+      player.velocity.x += xVelocity;
   }
 }
 
