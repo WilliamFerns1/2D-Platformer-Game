@@ -245,51 +245,55 @@ const animate = () => {
       player.velocity.y = gravity;
     };
 
+    // rules to see if the player is hitting one of the sides of a platform
     const platformSideHitDetectionRules = [
-      player.position.x + player.width + player.velocity.x >= platform.position.x && player.position.x <= platform.position.x + platform.width, // player position is before or equal to platform range - 1 / 3 of the player width. This and the above condition will check is player x position is at in the same range as the platform x range roughly
-      player.position.y + player.height > platform.position.y, // player is directly right above platform, or is below the platform
-      player.position.y < platform.position.y + platform.height,
+      player.position.x + player.width + player.velocity.x >= platform.position.x && player.position.x <= platform.position.x + platform.width, // checks whether the player is on the same x positions as the platform
+      player.position.y + player.height > platform.position.y, // checks if the player or a part of the player is in the same conflicting y-axis as the sisde of the platform, specifically below the y position
+      player.position.y < platform.position.y + platform.height, // checks if the player is not below the platform
     ];
     
     // whether the player is at the start of the platform, or end
     const sideOfPlayer = player.position.x + player.width / 2 > platform.position.x + platform.width / 2 ? "end" : "start";
     if (platformSideHitDetectionRules.every(rule => rule)) {
+
       if (sideOfPlayer === "start") {
+        // move the player to be right against the start of the platform, so that it doesn't move through the platform, acting as if it bumped against the platform side
         player.position.x = platform.position.x - player.width;
       } else {
+        // move the player to be right at the end of the platform, making sure the player doesn't move through it at all, simulating the player bumping against the end of the platform.
         player.position.x = platform.position.x + platform.width;
       }
     }
   });
 
+  // conditions to see if the player has hit a specific checkpoint
   checkpoints.forEach((checkpoint, index, checkpoints) => {
     const checkpointDetectionRules = [
-      player.position.x >= checkpoint.position.x,
-      player.position.y >= checkpoint.position.y,
-      player.position.y + player.height <=
-      checkpoint.position.y + checkpoint.height,
-      isCheckpointCollisionDetectionActive,
-      player.position.x - player.width <=
-      checkpoint.position.x - checkpoint.width + player.width * 0.9,
-      index === 0 || checkpoints[index - 1].claimed === true,
+      player.position.x >= checkpoint.position.x, // checks whether the player x position is past or the exact same as the checkpoint position x.
+      player.position.y >= checkpoint.position.y, // checks whether the player y position is below or equal to the checkpoint y position 
+      player.position.y + player.height <= checkpoint.position.y + checkpoint.height, // make sure player is not below the platform
+      isCheckpointCollisionDetectionActive, // checks whether checkpoint collision is active
+      player.position.x - player.width <= checkpoint.position.x - checkpoint.width + player.width * 0.9, // Check whether player is not past the platform. 
+      index === 0 || checkpoints[index - 1].claimed === true, // checks whether this is the first checkpoint, or the previous checkpoint is checked. The user should only be allowed to check a checkpoint when the previous one is checked, or the checkpoint is the first one.
     ];
 
+    // if each condition above is true, then claim the checkpoint
     if (checkpointDetectionRules.every((rule) => rule)) {
       checkpoint.claim();
 
-
+      // if the user reached the last checkpoint
       if (index === checkpoints.length - 1) {
-        isCheckpointCollisionDetectionActive = false;
-        showCheckpointScreen("You reached the final checkpoint!");
-        movePlayer("ArrowRight", 0, false);
-      } else if (player.position.x >= checkpoint.position.x && player.position.x <= checkpoint.position.x + 40) {
-        showCheckpointScreen("You reached a checkpoint!");
+        isCheckpointCollisionDetectionActive = false; // set detection to false
+        showCheckpointScreen("You reached the final checkpoint!"); // display checkpoint screen message, telling user that they have won
+        movePlayer("ArrowRight", 0, false);  // stop the player from moving right
+      } else {
+        showCheckpointScreen("You reached a checkpoint!"); // display message telling player that they reached a checkpoint
       }
     };
   });
 }
 
-
+// Keep track on whether a key is pressed or not
 const keys = {
   rightKey: {
     pressed: false
@@ -299,55 +303,66 @@ const keys = {
   }
 };
 
+// function to move player, when player press keys
 const movePlayer = (key, xVelocity, isPressed) => {
+  // make so that player cannot move after reaching last checkpoint
   if (!isCheckpointCollisionDetectionActive) {
     player.velocity.x = 0;
     player.velocity.y = 0;
     return;
   }
+
+  // switch statement to handle different key presses
   switch (key) {
+    // if user pressed arrow left
     case "ArrowLeft":
-      keys.leftKey.pressed = isPressed;
-      if (xVelocity === 0) {
-        player.velocity.x = xVelocity;
+      keys.leftKey.pressed = isPressed; // set arrow left key press it isPressed
+      if (xVelocity === 0) { // if xVelocity is 0 (meaning player stopped pressing arrow left)
+        player.velocity.x = xVelocity; // set the player x velocity to 0
       }
-      player.velocity.x -= xVelocity;
+      player.velocity.x -= xVelocity; // regardless, minus xVelocity with the xVelocity, to move the player to the left
       break;
+
+    // when user presses arrow up, spacebar, or " ", it will do this
     case "ArrowUp":
     case " ":
     case "Spacebar":
-      player.velocity.y -= 8;
+      player.velocity.y -= 8; // minus 8 from the y velocity (move the player 8px up)
       break;
-    case "ArrowRight":
-      keys.rightKey.pressed = isPressed;
-      if (xVelocity === 0) {
-        player.velocity.x = xVelocity;
+    case "ArrowRight": // statement to handle when user presses arrow up
+      keys.rightKey.pressed = isPressed; // set the righkey.pressed to isPressed
+      if (xVelocity === 0) { // f xvlocity is 0 (meaning the player released the arrow right button)
+        player.velocity.x = xVelocity; // set the velocity to 0, so that the player doesn't move
       }
-      player.velocity.x += xVelocity;
+      player.velocity.x += xVelocity; // regardless, move the player to the right
   }
 }
 
+// function to start game
 const startGame = () => {
-  canvas.style.display = "block";
-  startScreen.style.display = "none";
-  animate();
+  canvas.style.display = "block"; // set the canvas display to show 
+  startScreen.style.display = "none"; // set the start screen to none, to hide it
+  animate(); // call the animate function
 }
 
-const showCheckpointScreen = (msg) => {
-  checkpointScreen.style.display = "block";
-  checkpointMessage.textContent = msg;
-  if (isCheckpointCollisionDetectionActive) {
+// function to show a checkpoint screen popup, with a message
+const showCheckpointScreen = (msg) => {  
+  checkpointScreen.style.display = "block"; // set the display to block to show it
+  checkpointMessage.textContent = msg; // set the text content to the message
+  if (isCheckpointCollisionDetectionActive) { // if checkpoint collision is active (it is not the last checkpoint), wait for two seconds and set the popup display ot none, to hide it
     setTimeout(() => (checkpointScreen.style.display = "none"), 2000);
   }
 };
 
+// add event listener for start button, that calls startGame when clicked
 startBtn.addEventListener("click", startGame);
 
+// add event listener for when person presses a key
 window.addEventListener("keydown", ({ key }) => {
-  movePlayer(key, 8, true);
+  movePlayer(key, 8, true); // call movePlayer, passing in key, 8 pixels xVelocity, and isPressed to true
 });
 
+// add event listener for when person stop holding in key
 window.addEventListener("keyup", ({ key }) => {
-  movePlayer(key, 0, false);
+  movePlayer(key, 0, false); // call movePlayer, passing in key, setting x velocity to 0, and isPressed to false
 });
-
